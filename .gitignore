@@ -1,0 +1,7 @@
+node_modules
+dist
+# dati personali: non pubblicarli su GitHub
+dati/
+*.json.bak
+scadenziario-backup-*.json
+*.zip
