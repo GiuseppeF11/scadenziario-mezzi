@@ -1,5 +1,8 @@
 node_modules
 dist
+.env.local
+.env.*.local
+.firebase/
 # dati personali: non pubblicarli su GitHub
 dati/
 *.json.bak

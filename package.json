@@ -1,15 +1,17 @@
 {
-  "name": "scadenziario-mezzi",
+  "name": "scadenziario",
   "private": true,
-  "version": "1.0.0",
+  "version": "2.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview --host",
-    "test": "node --test tests/*.test.js"
+    "test": "node --test tests/*.test.js",
+    "deploy": "npm test && npm run build && firebase deploy --only hosting,firestore:rules"
   },
   "dependencies": {
+    "firebase": "^11.10.0",
     "vue": "^3.5.13"
   },
   "devDependencies": {

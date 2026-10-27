@@ -1,7 +1,8 @@
-// Export calendario (.ics) con promemoria 30 e 7 giorni prima.
-// Funziona con Google Calendar, Calendario di iPhone e Outlook.
-import { KIND } from './scadenze.js'
+// Export calendario (.ics) con promemoria e link "aggiungi a Google Calendar".
+// Funziona con Google Calendar, Calendario di iPhone, Samsung e Outlook.
 import { eur, fmtDate } from './dates.js'
+import { tipoOf } from './tipi.js'
+import { formatTarga } from './scadenze.js'
 
 const ymd = d => `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`
 const escTxt = s => String(s).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n')
@@ -17,29 +18,46 @@ function fold(line) {
   return out.join('\r\n')
 }
 
+export function titoloEvento(it) {
+  const targa = it.v.campi?.targa ? ` (${formatTarga(it.v.campi.targa)})` : ''
+  return `${it.sc.titolo} · ${it.v.nome}${targa}`
+}
+
+function descrizione(it) {
+  const c = it.v.campi || {}
+  return [
+    `${tipoOf(it.v.tipo).nome} · scadenza ${fmtDate(it.date)}`,
+    it.amount ? `Importo${it.stimato ? ' stimato' : ''}: ${eur(it.amount)}` : '',
+    c.fornitore || c.operatore || c.compagnia ? `Fornitore: ${c.fornitore || c.operatore || c.compagnia}` : '',
+    c.codiceCliente ? `Codice cliente: ${c.codiceCliente}` : '',
+    c.polizza ? `Polizza: ${c.polizza}` : ''
+  ].filter(Boolean).join('\n')
+}
+
+/** Giorni di preavviso: quello della scadenza e, se lungo, anche uno a una settimana. */
+export function avvisi(sc) {
+  const a = Number(sc.avviso)
+  const first = a >= 0 ? a : 30
+  return [...new Set([first, first > 7 ? 7 : null, 0].filter(x => x !== null))]
+}
+
 function event(it, stamp) {
   const next = new Date(it.date.getFullYear(), it.date.getMonth(), it.date.getDate() + 1)
-  const title = `${KIND[it.kind]} ${it.m.modello || ''} (${it.m.targa || ''})`
-  const desc = [
-    `Scadenza ${KIND[it.kind].toLowerCase()}: ${fmtDate(it.date)}`,
-    it.amount ? `Importo: ${eur(it.amount)}` : '',
-    it.m.compagnia ? `Compagnia: ${it.m.compagnia}` : '',
-    it.m.polizza ? `Polizza: ${it.m.polizza}` : ''
-  ].filter(Boolean).join('\n')
+  const title = titoloEvento(it)
   // UID stabile: reimportando, il calendario aggiorna l'evento invece di duplicarlo
-  const uid = `${it.m.id}-${it.kind}-${ymd(it.date)}@scadenziario-mezzi`
-  const alarm = (days) => ['BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${escTxt(title)}`, `TRIGGER:-P${days}D`, 'END:VALARM']
+  const uid = `${it.v.id}-${it.sc.id}-${ymd(it.date)}@scadenziario`
+  const alarm = days => ['BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${escTxt(title)}`, days ? `TRIGGER:-P${days}D` : 'TRIGGER:PT9H', 'END:VALARM']
   return [
     'BEGIN:VEVENT', `UID:${uid}`, `DTSTAMP:${stamp}`,
     `DTSTART;VALUE=DATE:${ymd(it.date)}`, `DTEND;VALUE=DATE:${ymd(next)}`,
-    `SUMMARY:${escTxt(title)}`, `DESCRIPTION:${escTxt(desc)}`, 'TRANSP:TRANSPARENT',
-    ...alarm(30), ...alarm(7), 'END:VEVENT'
+    `SUMMARY:${escTxt(title)}`, `DESCRIPTION:${escTxt(descrizione(it))}`, 'TRANSP:TRANSPARENT',
+    ...avvisi(it.sc).flatMap(alarm), 'END:VEVENT'
   ]
 }
 
 export function buildIcs(items, now = new Date()) {
   const stamp = now.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
-  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Scadenziario Mezzi//IT', 'CALSCALE:GREGORIAN', 'X-WR-CALNAME:Scadenze mezzi']
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Scadenziario//IT', 'CALSCALE:GREGORIAN', 'X-WR-CALNAME:Scadenziario']
   for (const it of items) lines.push(...event(it, stamp))
   lines.push('END:VCALENDAR')
   return lines.map(fold).join('\r\n') + '\r\n'
@@ -47,9 +65,6 @@ export function buildIcs(items, now = new Date()) {
 
 export function googleCalendarUrl(it) {
   const next = new Date(it.date.getFullYear(), it.date.getMonth(), it.date.getDate() + 1)
-  const title = `${KIND[it.kind]} ${it.m.modello || ''} (${it.m.targa || ''})`
-  const det = `Scadenza ${KIND[it.kind].toLowerCase()}: ${fmtDate(it.date)}` + (it.amount ? `\nImporto: ${eur(it.amount)}` : '')
-  return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent(title) +
-    `&dates=${ymd(it.date)}/${ymd(next)}&details=` + encodeURIComponent(det)
+  return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent(titoloEvento(it)) +
+    `&dates=${ymd(it.date)}/${ymd(next)}&details=` + encodeURIComponent(descrizione(it))
 }
-

@@ -5,15 +5,16 @@ import { VitePWA } from 'vite-plugin-pwa'
 // base './' -> funziona sia su GitHub Pages (sottocartella) sia su Netlify/Vercel
 export default defineConfig({
   base: './',
+  build: { chunkSizeWarningLimit: 800 },
   plugins: [
     vue(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icons/apple-touch-icon.png', 'icons/favicon.svg'],
       manifest: {
-        name: 'Scadenziario Mezzi',
+        name: 'Scadenziario',
         short_name: 'Scadenze',
-        description: 'Assicurazione, revisione e bollo dei mezzi di famiglia',
+        description: 'Scadenze e spese di casa, mezzi, bollette e abbonamenti',
         lang: 'it',
         start_url: './',
         scope: './',
@@ -28,6 +29,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+        navigateFallbackDenylist: [/^\/__\//],
         // font di Google in cache, così l'app resta uguale anche offline
         runtimeCaching: [{
           urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
