@@ -58,7 +58,7 @@ function save() {
   })
   chiudiSenzaBozza()
   saveVoce(out)
-  toast(isNew ? `${t.value.nome} aggiunta` : 'Modifiche salvate')
+  toast(isNew ? `Voce aggiunta: ${out.nome}` : 'Modifiche salvate')
   closeSheet()
 }
 

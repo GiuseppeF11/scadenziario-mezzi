@@ -38,6 +38,18 @@ const groups = computed(() => {
     .map(g => ({ ...g, mese: g.items.reduce((s, v) => s + costoMensile(v, state.pagamenti), 0) }))
 })
 
+// A destra: quanto paghi davvero alla prossima scadenza.
+// Una sola scadenza → il suo importo con la cadenza (es. 109,90 € · annuale);
+// più scadenze (es. un mezzo) → la prossima in ordine di data.
+function rata(v) {
+  const scs = v.scadenze || []
+  if (!scs.length) return null
+  const sc = scs.length === 1 ? scs[0]
+    : [...scs].sort((a, b) => (a.data || '9999') < (b.data || '9999') ? -1 : 1)[0]
+  const label = scs.length === 1 ? ricorrenzaLabel(sc.ricorrenza).toLowerCase() : `prossima · ${sc.titolo.toLowerCase()}`
+  return { importo: stimaImporto(sc, state.pagamenti), label: (sc.variabile ? 'stima · ' : '') + label }
+}
+
 const scInfo = sc => {
   const d = parse(sc.data)
   if (!d) return { text: 'senza data', cls: '' }
@@ -76,11 +88,11 @@ const scInfo = sc => {
             <b>{{ v.nome }}</b>
             <span class="sub"><PlateTag v-if="v.campi?.targa" :targa="v.campi.targa" /><span v-if="tipoOf(v.tipo).sotto(v)">{{ tipoOf(v.tipo).sotto(v) }}</span><TagList :ids="v.etichette" /></span>
           </div>
-          <div class="mese"><b>{{ eur(costoMensile(v, state.pagamenti)) }}</b><span>al mese</span></div>
+          <div v-if="rata(v)" class="mese"><b>{{ eur(rata(v).importo) }}</b><span>{{ rata(v).label }}</span></div>
         </div>
         <div class="sc-list">
           <div v-for="sc in v.scadenze" :key="sc.id" class="sc-line">
-            <span>{{ sc.titolo }} · {{ ricorrenzaLabel(sc.ricorrenza).toLowerCase() }}<template v-if="stimaImporto(sc, state.pagamenti)"> · {{ eur(stimaImporto(sc, state.pagamenti)) }}</template></span>
+            <span>{{ sc.titolo }} · {{ ricorrenzaLabel(sc.ricorrenza).toLowerCase() }}<template v-if="v.scadenze.length > 1 && stimaImporto(sc, state.pagamenti)"> · {{ eur(stimaImporto(sc, state.pagamenti)) }}</template></span>
             <span class="pill" :class="scInfo(sc).cls">{{ scInfo(sc).text }}</span>
           </div>
         </div>
