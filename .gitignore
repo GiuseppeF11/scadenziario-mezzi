@@ -8,3 +8,7 @@ dati/
 *.json.bak
 scadenziario-backup-*.json
 *.zip
+
+# log della CLI di Firebase
+firebase-debug.log*
+firestore-debug.log*

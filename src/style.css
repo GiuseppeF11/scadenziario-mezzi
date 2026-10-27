@@ -275,3 +275,5 @@ details.adv[open] { display: flex; flex-direction: column; gap: 10px }
 .ok-msg { color: var(--green); font-size: 14px }
 .splash { min-height: 60vh; display: grid; place-items: center; color: var(--muted) }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0) }
+.preview.bozza { display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--accent); background: var(--accent-soft) }
+.preview.bozza .link-btn { align-self: flex-start; padding: 0 }

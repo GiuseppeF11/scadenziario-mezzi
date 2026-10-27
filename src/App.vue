@@ -99,6 +99,6 @@ function undo() { const u = ui.toast?.undo; ui.toast = null; u?.() }
 
   <div v-if="ui.toast" class="toast" role="status">
     <span>{{ ui.toast.msg }}</span>
-    <button v-if="ui.toast.undo" @click="undo">Annulla</button>
+    <button v-if="ui.toast.undo" @click="undo">{{ ui.toast.label || 'Annulla' }}</button>
   </div>
 </template>

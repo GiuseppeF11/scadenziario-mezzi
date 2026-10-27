@@ -6,9 +6,16 @@ import { TIPI } from '../lib/tipi.js'
 import { iso, today } from '../lib/dates.js'
 import { closeSheet, toast } from '../lib/ui.js'
 import EtichettePicker from './EtichettePicker.vue'
+import { useBozza, leggiBozza, scartaBozza, oraBozza } from '../lib/bozze.js'
 
 const props = defineProps({ pagamento: Object })
-const p = ref(props.pagamento ? { ...props.pagamento, etichette: [...(props.pagamento.etichette || [])] } : { titolo: '', tipo: 'altro', voceId: '', data: iso(today()), importo: null, etichette: [], nota: '' })
+const iniziale = props.pagamento ? { ...props.pagamento, etichette: [...(props.pagamento.etichette || [])] } : { titolo: '', tipo: 'altro', voceId: '', data: iso(today()), importo: null, etichette: [], nota: '' }
+const bozzaId = props.pagamento ? `spesa-${props.pagamento.id}` : 'spesa-nuova'
+const base = JSON.stringify(iniziale)
+const ripristinata = ref(leggiBozza(bozzaId))
+const p = ref(ripristinata.value ? ripristinata.value.data : iniziale)
+const { chiudiSenzaBozza } = useBozza(() => bozzaId, () => p.value, () => base)
+function scartaModifiche() { scartaBozza(bozzaId); p.value = JSON.parse(base); ripristinata.value = null }
 const error = ref('')
 const voci = computed(() => state.voci.filter(v => v.tipo === p.value.tipo).sort((a, b) => a.nome.localeCompare(b.nome)))
 
@@ -22,11 +29,13 @@ function save() {
   if (!p.value.titolo?.trim() && !p.value.voceId) { error.value = 'Scrivi una descrizione.'; return }
   if (!(Number(p.value.importo) > 0)) { error.value = 'Inserisci un importo.'; return }
   const v = state.voci.find(x => x.id === p.value.voceId)
+  chiudiSenzaBozza()
   savePagamento({ ...p.value, titolo: p.value.titolo?.trim() || v?.nome || 'Spesa', voceId: p.value.voceId || null })
   toast(props.pagamento ? 'Movimento aggiornato' : 'Spesa registrata')
   closeSheet()
 }
 function remove() {
+  chiudiSenzaBozza()
   const undo = deletePagamento(props.pagamento.id)
   toast('Movimento eliminato', undo)
   closeSheet()
@@ -35,6 +44,10 @@ function remove() {
 
 <template>
   <h2>{{ pagamento ? 'Modifica movimento' : 'Registra una spesa' }}</h2>
+  <div v-if="ripristinata" class="preview bozza">
+    <span>Ho ripreso la bozza del {{ oraBozza(ripristinata) }}.</span>
+    <button type="button" class="link-btn danger" @click="scartaModifiche">Scarta</button>
+  </div>
   <form class="form" novalidate @submit.prevent="save">
     <div class="field">
       <label for="s-t">Descrizione</label>

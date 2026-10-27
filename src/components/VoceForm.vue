@@ -5,20 +5,40 @@ import { TIPI, tipoOf } from '../lib/tipi.js'
 import { nuovaVoce, nuovaScadenza, newId, clean } from '../lib/scadenze.js'
 import { state, saveVoce, deleteVoce } from '../lib/store.js'
 import { closeSheet, toast } from '../lib/ui.js'
+import { useBozza, leggiBozza, scartaBozza, oraBozza } from '../lib/bozze.js'
 import TipoIcon from './TipoIcon.vue'
 import ScadenzaEditor from './ScadenzaEditor.vue'
 import EtichettePicker from './EtichettePicker.vue'
 
 const props = defineProps({ voce: Object, tipo: String })
 const isNew = !props.voce
-const draft = ref(props.voce ? reactive(clean(props.voce)) : props.tipo ? reactive(nuovaVoce(props.tipo)) : null)
+const bozzaId = isNew ? 'voce-nuova' : `voce-${props.voce.id}`
+const base = ref(props.voce ? JSON.stringify(clean(props.voce)) : null)
+// Modifica: se c'è una bozza di questa voce la riapro direttamente (con avviso)
+const bozzaEsistente = leggiBozza(bozzaId)
+const ripristinata = ref(!isNew && bozzaEsistente ? bozzaEsistente : null)
+const draft = ref(ripristinata.value ? reactive(ripristinata.value.data)
+  : props.voce ? reactive(clean(props.voce))
+  : props.tipo ? reactive(nuovaVoce(props.tipo)) : null)
+if (isNew && props.tipo) base.value = JSON.stringify(draft.value)
+// Nuova voce: la bozza si propone nella scelta tipologia
+const bozzaNuova = ref(isNew && !props.tipo ? bozzaEsistente : null)
+const { chiudiSenzaBozza, flush } = useBozza(() => (draft.value ? bozzaId : null), () => draft.value, () => base.value)
 const t = computed(() => tipoOf(draft.value?.tipo))
 const error = ref('')
 const confirmDel = ref(false)
 const nPagamenti = computed(() => (props.voce ? state.pagamenti.filter(p => p.voceId === props.voce.id).length : 0))
 
-function scegli(id) { draft.value = reactive(nuovaVoce(id)) }
-const indietro = () => (isNew && !props.tipo ? (draft.value = null) : closeSheet())
+function scegli(id) { draft.value = reactive(nuovaVoce(id)); base.value = JSON.stringify(draft.value) }
+function riprendi() { draft.value = reactive(bozzaNuova.value.data); base.value = JSON.stringify(nuovaVoce(draft.value.tipo)) }
+function scartaNuova() { scartaBozza(bozzaId); bozzaNuova.value = null }
+function scartaModifiche() { scartaBozza(bozzaId); draft.value = reactive(clean(props.voce)); ripristinata.value = null }
+function indietro() {
+  if (!(isNew && !props.tipo)) return closeSheet()
+  flush()                              // tiene quanto scritto finora come bozza
+  bozzaNuova.value = leggiBozza(bozzaId)
+  draft.value = null
+}
 function cambiaTipo(id) { draft.value.tipo = id }
 
 const addScadenza = () => draft.value.scadenze.push(nuovaScadenza(draft.value.scadenze.length ? 'Altra scadenza' : 'Scadenza'))
@@ -36,18 +56,21 @@ function save() {
     extra: d.extra.filter(x => x.k || x.v),
     scadenze: d.scadenze.map(({ _custom, ...s }) => ({ ...s, importo: s.importo === '' ? null : s.importo }))
   })
+  chiudiSenzaBozza()
   saveVoce(out)
   toast(isNew ? `${t.value.nome} aggiunta` : 'Modifiche salvate')
   closeSheet()
 }
 
 function archivia() {
+  chiudiSenzaBozza()
   saveVoce({ ...clean(props.voce), archiviata: !props.voce.archiviata })
   toast(props.voce.archiviata ? 'Voce ripristinata' : 'Voce archiviata: non compare più nelle scadenze')
   closeSheet()
 }
 
 function elimina(conPagamenti) {
+  chiudiSenzaBozza()
   deleteVoce(props.voce.id, conPagamenti)
   toast('Voce eliminata')
   closeSheet()
@@ -57,6 +80,13 @@ function elimina(conPagamenti) {
 <template>
   <!-- Passo 1: scelta tipologia -->
   <template v-if="!draft">
+    <div v-if="bozzaNuova" class="preview bozza">
+      <span>Hai una bozza non salvata del {{ oraBozza(bozzaNuova) }}: <b>{{ bozzaNuova.data.nome || 'senza nome' }}</b> ({{ tipoOf(bozzaNuova.data.tipo).nome.toLowerCase() }})</span>
+      <div class="sheet-actions">
+        <button type="button" class="btn" @click="scartaNuova">Scarta</button>
+        <button type="button" class="btn primary" @click="riprendi">Riprendi</button>
+      </div>
+    </div>
     <h2>Cosa vuoi aggiungere?</h2>
     <div class="tipi-grid">
       <button v-for="x in TIPI" :key="x.id" class="tipo-btn" @click="scegli(x.id)">
@@ -71,6 +101,10 @@ function elimina(conPagamenti) {
     <div class="voce-h">
       <TipoIcon :tipo="draft.tipo" />
       <h2 style="flex:1">{{ isNew ? `Nuova voce: ${t.nome.toLowerCase()}` : 'Modifica voce' }}</h2>
+    </div>
+    <div v-if="ripristinata" class="preview bozza">
+      <span>Ho riaperto le modifiche non salvate del {{ oraBozza(ripristinata) }}.</span>
+      <button type="button" class="link-btn danger" @click="scartaModifiche">Scarta modifiche</button>
     </div>
 
     <div class="grid2">

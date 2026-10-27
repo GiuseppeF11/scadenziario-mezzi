@@ -15,14 +15,26 @@ export const ui = reactive({
 watch(() => ui.filtri, f => { try { localStorage.setItem(FKEY, JSON.stringify(f)) } catch { /* ignorato */ } }, { deep: true })
 
 let timer = null
-export function toast(msg, undo) {
+export function toast(msg, undo, label = 'Annulla') {
   clearTimeout(timer)
-  ui.toast = { msg, undo }
+  ui.toast = { msg, undo, label }
   timer = setTimeout(() => { ui.toast = null }, 6000)
 }
 
-export const openSheet = (type, props = {}) => { ui.sheet = { type, props } }
-export const closeSheet = () => { ui.sheet = null }
+// Il pannello aperto occupa una voce nella cronologia: il tasto/gesto "indietro"
+// chiude il pannello invece di uscire dall'app o cambiare scheda.
+export function openSheet(type, props = {}) {
+  if (ui.sheet && history.state?.sheet) history.replaceState({ sheet: true }, '')
+  else history.pushState({ sheet: true }, '')
+  ui.sheet = { type, props }
+  ui.toast = null
+}
+export function closeSheet() {
+  if (!ui.sheet) return
+  ui.sheet = null
+  if (history.state?.sheet) history.back()
+}
+addEventListener('popstate', () => { if (ui.sheet) ui.sheet = null })
 
 /** Filtro comune a tutte le viste: tipologie selezionate + etichetta. */
 export function passaFiltro(tipo, etichette = []) {
