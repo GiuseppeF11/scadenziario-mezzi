@@ -43,11 +43,11 @@ const groups = computed(() => {
   return f.raggruppa === 'etichetta' ? out.sort((a, b) => a.order - b.order || a.label.localeCompare(b.label)) : out.sort((a, b) => a.order - b.order)
 })
 
-const titolo = it => (it.kind === 'disdire' ? 'Ultimo giorno per disdire' : it.kind === 'fine' ? `${it.sc.titolo} · non si rinnova` : it.sc.titolo)
+const titolo = it => (it.kind === 'fine' ? `${it.sc.titolo} · non si rinnova` : it.sc.titolo)
 function disdetta(it, on) {
   open.value = null
   const undo = setDisdetta(it.v, it.sc.id, on)
-  toast(on ? `${it.v.nome}: disdetto, non si rinnova dal ${fmtDate(it.kind === 'disdire' ? it.rinnovo : it.date)}` : `${it.v.nome}: riattivato`, undo)
+  toast(on ? `${it.v.nome}: disdetto, non si rinnova dal ${fmtDate(it.date)}` : `${it.v.nome}: riattivato`, undo)
 }
 const toggle = key => { open.value = open.value === key ? null : key }
 </script>
@@ -92,12 +92,11 @@ const toggle = key => { open.value = open.value === key ? null : key }
           <div class="date"><b>{{ it.date.getDate() }}</b><span>{{ fmtMonthShort(it.date) }}</span></div>
           <div class="mid">
             <span class="kind"><i class="dot ti" :class="`ti-${it.v.tipo}`"></i>{{ titolo(it) }}</span>
-            <span class="sub"><PlateTag v-if="it.v.campi?.targa" :targa="it.v.campi.targa" /><span>{{ it.v.nome }}<template v-if="it.kind === 'disdire'"> · rinnovo {{ fmtDate(it.rinnovo) }}</template><template v-if="it.kind === 'fine'"> · disdetto il {{ fmtDate(parse(it.sc.disdetta.il)) }}</template></span><TagList :ids="it.v.etichette" /></span>
+            <span class="sub"><PlateTag v-if="it.v.campi?.targa" :targa="it.v.campi.targa" /><span>{{ it.v.nome }}<template v-if="it.kind === 'fine'"> · disdetto il {{ fmtDate(parse(it.sc.disdetta.il)) }}</template></span><TagList :ids="it.v.etichette" /></span>
           </div>
           <div class="end">
             <span v-if="it.kind === 'rata'" class="amt">{{ it.amount ? eur(it.amount) : '–' }}</span>
-            <s v-else-if="it.kind === 'fine'" class="amt muted">{{ eur(it.rif) }}</s>
-            <span v-else class="stima">rinnovo {{ eur(it.rif) }}</span>
+            <s v-else class="amt muted">{{ eur(it.rif) }}</s>
             <span v-if="it.kind === 'rata' && it.stimato && it.amount" class="stima">stima</span>
             <span v-if="it.kind === 'fine'" class="pill off">Disdetto</span>
             <span v-else class="pill" :class="it.status">{{ pillText(it.days) }}</span>
@@ -105,15 +104,14 @@ const toggle = key => { open.value = open.value === key ? null : key }
         </button>
         <div v-if="open === g.k + it.key" class="actions">
           <template v-if="it.kind === 'rata'">
+            <p v-if="it.disdireEntro" class="disdire-info" :class="{ late: it.giorniDisdire < 0 }">
+              <template v-if="it.giorniDisdire >= 0">Per non rinnovare, disdici entro il <b>{{ fmtDate(it.disdireEntro) }}</b> ({{ it.giorniDisdire === 0 ? 'oggi' : `tra ${it.giorniDisdire} gg` }}).</template>
+              <template v-else>Termine per disdire superato il {{ fmtDate(it.disdireEntro) }}: questo rinnovo è dovuto.</template>
+            </p>
             <button class="btn primary" @click="openSheet('paga', { voce: it.v, scId: it.sc.id })">{{ donePerTitolo(it.sc.titolo) }}</button>
             <a class="btn" :href="googleCalendarUrl(it)" target="_blank" rel="noopener">Google Calendar</a>
             <button class="btn" @click="openSheet('voce', { voce: it.v })">Apri voce</button>
             <button v-if="it.sc.ricorrenza" class="btn danger" @click="disdetta(it, true)">Disdici</button>
-          </template>
-          <template v-else-if="it.kind === 'disdire'">
-            <button class="btn danger" @click="disdetta(it, true)">Ho disdetto</button>
-            <a class="btn" :href="googleCalendarUrl(it)" target="_blank" rel="noopener">Google Calendar</a>
-            <button class="btn" @click="openSheet('voce', { voce: it.v })">Apri voce</button>
           </template>
           <template v-else>
             <p class="muted" style="font-size:13px;width:100%">Dal {{ fmtDate(it.date) }} non è più attivo e non lo conto nelle spese.</p>

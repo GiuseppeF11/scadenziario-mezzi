@@ -2,10 +2,10 @@
 // Una scadenza dentro una voce: data, importo, ricorrenza e opzioni avanzate.
 import { computed } from 'vue'
 import { RICORRENZE, UNITA, ricorrenzaId } from '../lib/tipi.js'
-import { iso, today, parse, fmtDate } from '../lib/dates.js'
+import { iso, today, parse, fmtDate, addDays, daysBetween } from '../lib/dates.js'
 
 const sc = defineModel({ type: Object, required: true })
-defineProps({ removable: Boolean })
+const props = defineProps({ removable: Boolean, preavviso: { type: Number, default: null } })
 defineEmits(['remove'])
 
 const ric = computed({
@@ -14,6 +14,13 @@ const ric = computed({
     const r = RICORRENZE.find(x => x.id === id).r
     if (r === 'custom') { sc.value._custom = true; sc.value.ricorrenza = sc.value.ricorrenza || { n: 10, unita: 'giorni' } } else { delete sc.value._custom; sc.value.ricorrenza = r ? { ...r } : null }
   }
+})
+// Termine per disdire senza pagare il prossimo rinnovo (solo come riferimento)
+const entro = computed(() => {
+  const d = parse(sc.value.data)
+  if (!props.preavviso || !d || !sc.value.ricorrenza || sc.value.disdetta) return null
+  const e = addDays(d, -props.preavviso)
+  return { data: e, giorni: daysBetween(today(), e) }
 })
 const disdici = () => { sc.value.disdetta = { il: iso(today()) } }
 const riattiva = () => { delete sc.value.disdetta }
@@ -67,7 +74,13 @@ const uid = Math.random().toString(36).slice(2, 8)
       <span>Disdetto il {{ fmtDate(parse(sc.disdetta.il)) }}<template v-if="sc.data">: non si rinnova dal {{ fmtDate(parse(sc.data)) }}</template>.</span>
       <button type="button" class="link-btn" @click="riattiva">Riattiva</button>
     </div>
-    <button v-else-if="sc.ricorrenza && sc.data" type="button" class="link-btn danger" style="align-self:flex-start" @click="disdici">Disdici: non si rinnova più</button>
+    <template v-else-if="sc.ricorrenza && sc.data">
+      <p v-if="entro" class="disdire-info" :class="{ late: entro.giorni < 0 }">
+        <template v-if="entro.giorni >= 0">Per non rinnovare, disdici entro il <b>{{ fmtDate(entro.data) }}</b> (preavviso {{ preavviso }} gg).</template>
+        <template v-else>Termine per disdire superato il {{ fmtDate(entro.data) }}: il prossimo rinnovo è dovuto.</template>
+      </p>
+      <button type="button" class="link-btn danger" style="align-self:flex-start" @click="disdici">Disdici: non si rinnova più</button>
+    </template>
     <details class="adv">
       <summary>Altre opzioni</summary>
       <div class="field">

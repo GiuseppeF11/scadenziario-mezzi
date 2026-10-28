@@ -159,11 +159,11 @@ test('preavviso disdetta: 7 gg di default sui rinnovi lunghi, quello indicato al
   assert.equal(preavvisoDisdetta(luce, luce.scadenze[0]), null)
 })
 
-test('occorrenze: promemoria "ultimo giorno per disdire" 7 giorni prima del rinnovo', () => {
+test('occorrenze: una sola riga per il rinnovo, con il termine per disdire nel dettaglio', () => {
   const s = occorrenze([disney], [], NOW)
-  assert.deepEqual(s.map(x => x.kind), ['disdire', 'rata'])
-  const d = s.find(x => x.kind === 'disdire')
-  assert.equal(iso(d.date), '2026-12-03'); assert.equal(d.amount, 0); assert.equal(d.rif, 109.9)
+  assert.equal(s.length, 1); assert.equal(s[0].kind, 'rata')
+  assert.equal(iso(s[0].disdireEntro), '2026-12-03'); assert.equal(s[0].giorniDisdire, 37); assert.equal(s[0].preavviso, 7)
+  assert.equal(occorrenze([claude], [], NOW)[0].disdireEntro, undefined)
 })
 
 test('disdetta: a dicembre resta visibile come "fine", non costa e non si proietta', () => {

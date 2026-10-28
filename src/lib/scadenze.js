@@ -63,11 +63,11 @@ export const riattiva = sc => { const { disdetta, ...rest } = sc; return rest }
 export const attiva = sc => !sc.disdetta
 
 /**
- * Tutte le scadenze aperte, ordinate per data. Ogni elemento ha un `kind`:
- * - 'rata'    da pagare (amount = importo)
- * - 'disdire' ultimo giorno utile per disdire prima del rinnovo (amount 0, rif = importo del rinnovo)
- * - 'fine'    rinnovo disdetto: da quel giorno non è più attivo (amount 0, rif = importo che non pagherai)
- * Le 'fine' e 'disdire' già passate non compaiono.
+ * Tutte le scadenze aperte, ordinate per data: una riga per scadenza. `kind`:
+ * - 'rata' da pagare (amount = importo). Se c'è un preavviso di disdetta porta con sé
+ *   `disdireEntro` (data limite) e `giorniDisdire`: si mostrano solo nel dettaglio.
+ * - 'fine' rinnovo disdetto: da quel giorno non è più attivo (amount 0, rif = importo che non pagherai).
+ * Le 'fine' già passate non compaiono.
  */
 export function occorrenze(voci, pagamenti = [], now = new Date()) {
   const t = today(now)
@@ -83,13 +83,14 @@ export function occorrenze(voci, pagamenti = [], now = new Date()) {
         if (days >= 0) out.push({ key: `${v.id}:${sc.id}:fine`, kind: 'fine', v, sc, date, days, status: 'off', amount: 0, rif: importo, stimato: !!sc.variabile })
         continue
       }
-      out.push({ key: `${v.id}:${sc.id}`, kind: 'rata', v, sc, date, days, status: status(days, sc.avviso), amount: importo, stimato: !!sc.variabile })
+      const it = { key: `${v.id}:${sc.id}`, kind: 'rata', v, sc, date, days, status: status(days, sc.avviso), amount: importo, stimato: !!sc.variabile }
       const pre = preavvisoDisdetta(v, sc)
       if (pre) {
-        const d = addDays(date, -pre)
-        const dd = daysBetween(t, d)
-        if (dd >= 0) out.push({ key: `${v.id}:${sc.id}:disdire`, kind: 'disdire', v, sc, date: d, days: dd, rinnovo: date, status: status(dd, 7), amount: 0, rif: importo, stimato: !!sc.variabile })
+        it.preavviso = pre
+        it.disdireEntro = addDays(date, -pre)
+        it.giorniDisdire = daysBetween(t, it.disdireEntro)
       }
+      out.push(it)
     }
   }
   return out.sort((a, b) => a.date - b.date || a.v.nome.localeCompare(b.v.nome))

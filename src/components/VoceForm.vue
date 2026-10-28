@@ -2,7 +2,7 @@
 // Crea o modifica una voce. I campi cambiano in base alla tipologia scelta.
 import { ref, computed, reactive } from 'vue'
 import { TIPI, tipoOf } from '../lib/tipi.js'
-import { nuovaVoce, nuovaScadenza, newId, clean } from '../lib/scadenze.js'
+import { nuovaVoce, nuovaScadenza, newId, clean, preavvisoDisdetta } from '../lib/scadenze.js'
 import { state, saveVoce, deleteVoce } from '../lib/store.js'
 import { closeSheet, toast } from '../lib/ui.js'
 import { useBozza, leggiBozza, scartaBozza, oraBozza } from '../lib/bozze.js'
@@ -139,7 +139,7 @@ function elimina(conPagamenti) {
     <EtichettePicker v-model="draft.etichette" />
 
     <div class="sec">Scadenze e importi</div>
-    <ScadenzaEditor v-for="(s, i) in draft.scadenze" :key="s.id" v-model="draft.scadenze[i]" :removable="draft.scadenze.length > 1" @remove="draft.scadenze.splice(i, 1)" />
+    <ScadenzaEditor v-for="(s, i) in draft.scadenze" :key="s.id" v-model="draft.scadenze[i]" :removable="draft.scadenze.length > 1" :preavviso="preavvisoDisdetta(draft, { ...s, disdetta: null })" @remove="draft.scadenze.splice(i, 1)" />
     <button type="button" class="link-btn" style="align-self:flex-start" @click="addScadenza">+ Aggiungi un'altra scadenza</button>
 
     <div class="sec">Campi personalizzati</div>
