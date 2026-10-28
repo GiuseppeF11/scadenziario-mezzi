@@ -89,6 +89,7 @@ export const TIPI = [
       { k: 'numero', label: 'Numero / ID linea', half: true },
       { k: 'codiceCliente', label: 'Codice cliente', half: true },
       { k: 'vincolo', label: 'Vincolo fino al', type: 'date', half: true },
+      { k: 'disdetta', label: 'Preavviso disdetta (giorni)', type: 'number', half: true },
       { k: 'pagamento', label: 'Pagamento', type: 'select', options: PAGAMENTO, half: true }
     ],
     template: () => [sc('Canone', { n: 1, unita: 'mesi' }, { avviso: 5 })],
@@ -103,7 +104,7 @@ export const TIPI = [
       { k: 'piano', label: 'Piano', ph: 'es. Standard', half: true },
       { k: 'account', label: 'Account / email', half: true },
       { k: 'pagamento', label: 'Pagamento', type: 'select', options: PAGAMENTO, half: true },
-      { k: 'disdetta', label: 'Preavviso disdetta (giorni)', type: 'number', half: true }
+      { k: 'disdetta', label: 'Preavviso disdetta (giorni)', type: 'number', half: true, ph: '7' }
     ],
     template: () => [sc('Rinnovo', { n: 1, unita: 'mesi' }, { avviso: 3 })],
     sotto: v => [v.campi?.categoria, v.campi?.piano].filter(Boolean).join(' · ')
@@ -129,7 +130,8 @@ export const TIPI = [
       { k: 'ramo', label: 'Ramo', type: 'select', options: ['Casa', 'Vita', 'Salute', 'Infortuni', 'RC', 'Animali', 'Altro'], half: true },
       { k: 'compagnia', label: 'Compagnia', half: true },
       { k: 'polizza', label: 'N. polizza', half: true },
-      { k: 'agente', label: 'Agente / contatto', half: true }
+      { k: 'agente', label: 'Agente / contatto', half: true },
+      { k: 'disdetta', label: 'Preavviso disdetta (giorni)', type: 'number', half: true, ph: 'es. 30' }
     ],
     template: () => [sc('Premio', { n: 1, unita: 'anni' })],
     sotto: v => [v.campi?.ramo, v.campi?.compagnia].filter(Boolean).join(' · ')

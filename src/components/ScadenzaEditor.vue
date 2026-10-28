@@ -2,6 +2,7 @@
 // Una scadenza dentro una voce: data, importo, ricorrenza e opzioni avanzate.
 import { computed } from 'vue'
 import { RICORRENZE, UNITA, ricorrenzaId } from '../lib/tipi.js'
+import { iso, today, parse, fmtDate } from '../lib/dates.js'
 
 const sc = defineModel({ type: Object, required: true })
 defineProps({ removable: Boolean })
@@ -14,6 +15,8 @@ const ric = computed({
     if (r === 'custom') { sc.value._custom = true; sc.value.ricorrenza = sc.value.ricorrenza || { n: 10, unita: 'giorni' } } else { delete sc.value._custom; sc.value.ricorrenza = r ? { ...r } : null }
   }
 })
+const disdici = () => { sc.value.disdetta = { il: iso(today()) } }
+const riattiva = () => { delete sc.value.disdetta }
 const uid = Math.random().toString(36).slice(2, 8)
 </script>
 
@@ -60,6 +63,11 @@ const uid = Math.random().toString(36).slice(2, 8)
     </div>
     <label v-if="ric === 'pers'" class="check"><input v-model="sc.variabile" type="checkbox"> Importo variabile</label>
     <p v-if="sc.variabile" class="hint muted" style="font-size:12px">L'importo indicato è una stima: dopo qualche pagamento uso la media degli ultimi tre.</p>
+    <div v-if="sc.ricorrenza && sc.disdetta" class="preview" style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+      <span>Disdetto il {{ fmtDate(parse(sc.disdetta.il)) }}<template v-if="sc.data">: non si rinnova dal {{ fmtDate(parse(sc.data)) }}</template>.</span>
+      <button type="button" class="link-btn" @click="riattiva">Riattiva</button>
+    </div>
+    <button v-else-if="sc.ricorrenza && sc.data" type="button" class="link-btn danger" style="align-self:flex-start" @click="disdici">Disdici: non si rinnova più</button>
     <details class="adv">
       <summary>Altre opzioni</summary>
       <div class="field">

@@ -42,8 +42,10 @@ const groups = computed(() => {
 // Una sola scadenza → il suo importo con la cadenza (es. 109,90 € · annuale);
 // più scadenze (es. un mezzo) → la prossima in ordine di data.
 function rata(v) {
-  const scs = v.scadenze || []
-  if (!scs.length) return null
+  const tutte = v.scadenze || []
+  if (!tutte.length) return null
+  const scs = tutte.filter(x => !x.disdetta)
+  if (!scs.length) return { importo: null, label: 'disdetto' }
   const sc = scs.length === 1 ? scs[0]
     : [...scs].sort((a, b) => (a.data || '9999') < (b.data || '9999') ? -1 : 1)[0]
   const label = scs.length === 1 ? ricorrenzaLabel(sc.ricorrenza).toLowerCase() : `prossima · ${sc.titolo.toLowerCase()}`
@@ -52,8 +54,9 @@ function rata(v) {
 
 const scInfo = sc => {
   const d = parse(sc.data)
-  if (!d) return { text: 'senza data', cls: '' }
+  if (!d) return { text: sc.disdetta ? 'disdetto' : 'senza data', cls: sc.disdetta ? 'off' : '' }
   const days = daysBetween(t0, d)
+  if (sc.disdetta) return { text: days >= 0 ? `disdetto · attivo fino al ${fmtDate(d)}` : `terminato il ${fmtDate(d)}`, cls: 'off' }
   return { text: `${fmtDate(d)} · ${pillText(days).toLowerCase()}`, cls: status(days, sc.avviso) }
 }
 </script>
@@ -88,7 +91,7 @@ const scInfo = sc => {
             <b>{{ v.nome }}</b>
             <span class="sub"><PlateTag v-if="v.campi?.targa" :targa="v.campi.targa" /><span v-if="tipoOf(v.tipo).sotto(v)">{{ tipoOf(v.tipo).sotto(v) }}</span><TagList :ids="v.etichette" /></span>
           </div>
-          <div v-if="rata(v)" class="mese"><b>{{ eur(rata(v).importo) }}</b><span>{{ rata(v).label }}</span></div>
+          <div v-if="rata(v)" class="mese"><b>{{ rata(v).importo === null ? 'Disdetto' : eur(rata(v).importo) }}</b><span v-if="rata(v).importo !== null">{{ rata(v).label }}</span></div>
         </div>
         <div class="sc-list">
           <div v-for="sc in v.scadenze" :key="sc.id" class="sc-line">

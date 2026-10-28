@@ -139,3 +139,41 @@ test('ics valido con promemoria', () => {
   assert.match(ics, /TRIGGER:-P3D/)
   assert.ok(ics.split('\r\n').every(l => new TextEncoder().encode(l).length <= 75))
 })
+
+import { preavvisoDisdetta, disdici, riattiva } from '../src/lib/scadenze.js'
+
+const disney = {
+  id: 'dp', tipo: 'abbonamento', nome: 'Disney Plus', campi: {}, etichette: [],
+  scadenze: [{ id: 'd1', titolo: 'Rinnovo', data: '2026-12-10', importo: 109.9, ricorrenza: { n: 1, unita: 'anni' }, avviso: 3 }]
+}
+const claude = {
+  id: 'cl', tipo: 'abbonamento', nome: 'Claude', campi: {}, etichette: [],
+  scadenze: [{ id: 'c1', titolo: 'Rinnovo', data: '2026-11-15', importo: 21.96, ricorrenza: { n: 1, unita: 'mesi' }, avviso: 3 }]
+}
+
+test('preavviso disdetta: 7 gg di default sui rinnovi lunghi, quello indicato altrimenti', () => {
+  assert.equal(preavvisoDisdetta(disney, disney.scadenze[0]), 7)
+  assert.equal(preavvisoDisdetta(claude, claude.scadenze[0]), null)
+  assert.equal(preavvisoDisdetta({ ...claude, campi: { disdetta: 5 } }, claude.scadenze[0]), 5)
+  assert.equal(preavvisoDisdetta({ ...disney, campi: { disdetta: '0' } }, disney.scadenze[0]), null)
+  assert.equal(preavvisoDisdetta(luce, luce.scadenze[0]), null)
+})
+
+test('occorrenze: promemoria "ultimo giorno per disdire" 7 giorni prima del rinnovo', () => {
+  const s = occorrenze([disney], [], NOW)
+  assert.deepEqual(s.map(x => x.kind), ['disdire', 'rata'])
+  const d = s.find(x => x.kind === 'disdire')
+  assert.equal(iso(d.date), '2026-12-03'); assert.equal(d.amount, 0); assert.equal(d.rif, 109.9)
+})
+
+test('disdetta: a dicembre resta visibile come "fine", non costa e non si proietta', () => {
+  const dd = { ...disney, scadenze: [disdici(disney.scadenze[0], NOW)] }
+  assert.equal(dd.scadenze[0].disdetta.il, '2026-10-27')
+  const s = occorrenze([dd], [], NOW)
+  assert.equal(s.length, 1); assert.equal(s[0].kind, 'fine'); assert.equal(s[0].amount, 0); assert.equal(s[0].status, 'off')
+  assert.equal(proiezione([dd], [], NOW).reduce((a, m) => a + m.tot, 0), 0)
+  assert.equal(costoMensile(dd), 0)
+  // passata la data non compare più
+  assert.equal(occorrenze([dd], [], new Date(2026, 11, 11)).length, 0)
+  assert.equal(riattiva(dd.scadenze[0]).disdetta, undefined)
+})

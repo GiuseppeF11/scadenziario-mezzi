@@ -35,7 +35,7 @@ async function backup() {
 }
 
 async function calendario() {
-  const items = occorrenze(state.voci, state.pagamenti).filter(i => i.days >= 0)
+  const items = occorrenze(state.voci, state.pagamenti).filter(i => i.days >= 0 && i.kind !== 'fine')
   if (!items.length) { toast('Nessuna scadenza futura da esportare'); return }
   await saveFile('scadenziario.ics', buildIcs(items), 'text/calendar')
 }

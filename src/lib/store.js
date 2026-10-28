@@ -2,7 +2,7 @@
 // Il backend (Firebase o locale) viene scelto all'avvio; le viste usano solo queste funzioni.
 import { reactive, computed } from 'vue'
 import { firebaseEnabled } from '../firebase-config.js'
-import { newId, clean, registraPagamento, migraV1 } from './scadenze.js'
+import { newId, clean, registraPagamento, migraV1, disdici, riattiva } from './scadenze.js'
 import { COLORI_ETICHETTA } from './tipi.js'
 import { toast } from './ui.js'
 
@@ -104,6 +104,14 @@ export function paga(v, scId, payload) {
     ])
   }
   return { next, undo }
+}
+
+/** Disdice (o riattiva) una scadenza ricorrente. Ritorna la funzione di annullamento. */
+export function setDisdetta(v, scId, on) {
+  const prima = clean(v)
+  const voce = { ...prima, scadenze: prima.scadenze.map(s => (s.id === scId ? (on ? disdici(s) : riattiva(s)) : s)) }
+  write([{ type: 'set', col: 'voci', id: v.id, data: stamp(voce) }])
+  return () => write([{ type: 'set', col: 'voci', id: v.id, data: stamp(prima) }])
 }
 
 /* ---------- pagamenti / spese ---------- */

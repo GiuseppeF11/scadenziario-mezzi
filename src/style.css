@@ -277,3 +277,6 @@ details.adv[open] { display: flex; flex-direction: column; gap: 10px }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0) }
 .preview.bozza { display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--accent); background: var(--accent-soft) }
 .preview.bozza .link-btn { align-self: flex-start; padding: 0 }
+.pill.off { background: var(--sunk); color: var(--muted); border: 1px solid var(--line) }
+.item.s-off { opacity: .8 }
+.item.s-off .kind { color: var(--muted) }

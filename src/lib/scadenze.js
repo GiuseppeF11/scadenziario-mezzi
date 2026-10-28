@@ -1,5 +1,5 @@
 // Regole di dominio: niente Vue né Firebase qui, così si testa con `node --test`.
-import { parse, iso, addPeriod, addMonths, endOfMonth, startOfMonth, today, daysBetween, monthIndex } from './dates.js'
+import { parse, iso, addPeriod, addMonths, addDays, endOfMonth, startOfMonth, today, daysBetween, monthIndex } from './dates.js'
 import { TIPI, tipoOf, voltePerAnno } from './tipi.js'
 
 export const newId = () => (globalThis.crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2))
@@ -40,7 +40,35 @@ export function prossimaData(sc, dataPagamento) {
   return iso(d)
 }
 
-/** Tutte le scadenze aperte, ordinate per data. */
+/** Durata della ricorrenza in mesi (approssimata), per capire se è un rinnovo "lungo". */
+const mesiRicorrenza = r => (!r || !Number(r.n) ? 0 : { giorni: r.n / 30, settimane: r.n / 4.3, mesi: r.n, anni: r.n * 12 }[r.unita] || 0)
+
+/**
+ * Giorni di preavviso per disdire prima di un rinnovo, o null se non serve il promemoria.
+ * Se l'utente ha compilato "Preavviso disdetta" sulla voce vale quello (0 = nessun promemoria).
+ * Altrimenti 7 giorni per gli abbonamenti con rinnovo da 3 mesi in su
+ * (su quelli mensili un promemoria ogni mese sarebbe solo rumore).
+ */
+export function preavvisoDisdetta(v, sc) {
+  if (!sc.ricorrenza || sc.disdetta) return null
+  const raw = v.campi?.disdetta
+  if (raw !== undefined && raw !== null && raw !== '') return Number(raw) > 0 ? Number(raw) : null
+  if (v.tipo === 'abbonamento' && mesiRicorrenza(sc.ricorrenza) >= 3) return 7
+  return null
+}
+
+/** Disdetta: la scadenza non si rinnova più; dalla sua data in poi la voce non è più attiva. */
+export const disdici = (sc, quando = new Date()) => ({ ...sc, disdetta: { il: iso(today(quando)) } })
+export const riattiva = sc => { const { disdetta, ...rest } = sc; return rest }
+export const attiva = sc => !sc.disdetta
+
+/**
+ * Tutte le scadenze aperte, ordinate per data. Ogni elemento ha un `kind`:
+ * - 'rata'    da pagare (amount = importo)
+ * - 'disdire' ultimo giorno utile per disdire prima del rinnovo (amount 0, rif = importo del rinnovo)
+ * - 'fine'    rinnovo disdetto: da quel giorno non è più attivo (amount 0, rif = importo che non pagherai)
+ * Le 'fine' e 'disdire' già passate non compaiono.
+ */
 export function occorrenze(voci, pagamenti = [], now = new Date()) {
   const t = today(now)
   const out = []
@@ -50,10 +78,18 @@ export function occorrenze(voci, pagamenti = [], now = new Date()) {
       const date = parse(sc.data)
       if (!date) continue
       const days = daysBetween(t, date)
-      out.push({
-        key: `${v.id}:${sc.id}`, v, sc, date, days,
-        status: status(days, sc.avviso), amount: stimaImporto(sc, pagamenti), stimato: !!sc.variabile
-      })
+      const importo = stimaImporto(sc, pagamenti)
+      if (sc.disdetta) {
+        if (days >= 0) out.push({ key: `${v.id}:${sc.id}:fine`, kind: 'fine', v, sc, date, days, status: 'off', amount: 0, rif: importo, stimato: !!sc.variabile })
+        continue
+      }
+      out.push({ key: `${v.id}:${sc.id}`, kind: 'rata', v, sc, date, days, status: status(days, sc.avviso), amount: importo, stimato: !!sc.variabile })
+      const pre = preavvisoDisdetta(v, sc)
+      if (pre) {
+        const d = addDays(date, -pre)
+        const dd = daysBetween(t, d)
+        if (dd >= 0) out.push({ key: `${v.id}:${sc.id}:disdire`, kind: 'disdire', v, sc, date: d, days: dd, rinnovo: date, status: status(dd, 7), amount: 0, rif: importo, stimato: !!sc.variabile })
+      }
     }
   }
   return out.sort((a, b) => a.date - b.date || a.v.nome.localeCompare(b.v.nome))
@@ -69,6 +105,7 @@ export function proiezione(voci, pagamenti = [], now = new Date(), mesi = 12) {
   for (const v of voci) {
     if (v.archiviata) continue
     for (const sc of v.scadenze || []) {
+      if (sc.disdetta) continue
       const amt = stimaImporto(sc, pagamenti)
       let d = parse(sc.data)
       let guard = 0
@@ -120,7 +157,7 @@ export function totaliPer(pagamenti, keyFn) {
 
 /** Costo medio mensile di una voce, dalle sue ricorrenze. */
 export function costoMensile(v, pagamenti = []) {
-  return (v.scadenze || []).reduce((s, sc) => s + stimaImporto(sc, pagamenti) * voltePerAnno(sc.ricorrenza) / 12, 0)
+  return (v.scadenze || []).filter(attiva).reduce((s, sc) => s + stimaImporto(sc, pagamenti) * voltePerAnno(sc.ricorrenza) / 12, 0)
 }
 
 /**

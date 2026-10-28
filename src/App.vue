@@ -24,7 +24,7 @@ onMounted(() => window.addEventListener('hashchange', onHash))
 onBeforeUnmount(() => window.removeEventListener('hashchange', onHash))
 
 const views = { scadenze: ScadenzeView, voci: VociView, andamento: AndamentoView }
-const urgenti = computed(() => occorrenze(state.voci, state.pagamenti).filter(i => i.status !== 'green').length)
+const urgenti = computed(() => occorrenze(state.voci, state.pagamenti).filter(i => i.status === 'red' || i.status === 'amber').length)
 const oggi = fmtDate(today()).replace(/ \d{4}$/, '')
 const needLogin = computed(() => state.mode === 'cloud' && state.authReady && !state.user)
 const sync = computed(() => {
