@@ -69,6 +69,8 @@ const uid = Math.random().toString(36).slice(2, 8)
       </label>
     </div>
     <label v-if="ric === 'pers'" class="check"><input v-model="sc.variabile" type="checkbox"> Importo variabile</label>
+    <label v-if="sc.ricorrenza" class="check"><input v-model="sc.automatico" type="checkbox"> Rinnovo automatico (addebito diretto)</label>
+    <p v-if="sc.ricorrenza && sc.automatico" class="hint muted" style="font-size:12px">Ti avviso quando è in scadenza; il giorno dopo la segno pagata da solo con l'importo previsto e passo al rinnovo successivo. L'importo lo puoi correggere dai Movimenti.</p>
     <p v-if="sc.variabile" class="hint muted" style="font-size:12px">L'importo indicato è una stima: dopo qualche pagamento uso la media degli ultimi tre.</p>
     <div v-if="sc.ricorrenza && sc.disdetta" class="preview" style="display:flex;justify-content:space-between;gap:8px;align-items:center">
       <span>Disdetto il {{ fmtDate(parse(sc.disdetta.il)) }}<template v-if="sc.data">: non si rinnova dal {{ fmtDate(parse(sc.data)) }}</template>.</span>

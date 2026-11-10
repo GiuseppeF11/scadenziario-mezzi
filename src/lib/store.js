@@ -2,7 +2,7 @@
 // Il backend (Firebase o locale) viene scelto all'avvio; le viste usano solo queste funzioni.
 import { reactive, computed } from 'vue'
 import { firebaseEnabled } from '../firebase-config.js'
-import { newId, clean, registraPagamento, migraV1, disdici, riattiva } from './scadenze.js'
+import { newId, clean, registraPagamento, migraV1, disdici, riattiva, rinnoviAutomatici } from './scadenze.js'
 import { COLORI_ETICHETTA } from './tipi.js'
 import { toast } from './ui.js'
 
@@ -41,6 +41,25 @@ function onData(part, meta) {
   }
   state.pending = Object.values(pend).some(Boolean)
   state.dataReady = Object.values(ready).every(Boolean)
+  if (state.dataReady) programmaRinnovi()
+}
+
+/* ---------- rinnovi automatici ---------- */
+let rinnoviTimer = null
+const programmaRinnovi = () => { clearTimeout(rinnoviTimer); rinnoviTimer = setTimeout(applicaRinnovi, 800) }
+// anche quando riapri l'app il giorno dopo senza ricaricarla
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && state.dataReady) programmaRinnovi() })
+
+function applicaRinnovi() {
+  if (!state.dataReady || !state.user) return
+  const r = rinnoviAutomatici(state.voci, state.pagamenti)
+  if (!r.voci.length) return
+  write([
+    ...r.pagamenti.map(p => ({ type: 'set', col: 'pagamenti', id: p.id, data: stamp(p) })),
+    ...r.voci.map(v => ({ type: 'set', col: 'voci', id: v.id, data: stamp(v) }))
+  ])
+  const nomi = [...new Set(r.rinnovati.map(x => x.voce))]
+  toast(`Rinnovo automatico registrato: ${nomi.join(', ')}`)
 }
 
 function onError(e) {

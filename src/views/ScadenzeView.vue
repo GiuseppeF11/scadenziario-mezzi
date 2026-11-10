@@ -92,7 +92,7 @@ const toggle = key => { open.value = open.value === key ? null : key }
           <div class="date"><b>{{ it.date.getDate() }}</b><span>{{ fmtMonthShort(it.date) }}</span></div>
           <div class="mid">
             <span class="kind"><i class="dot ti" :class="`ti-${it.v.tipo}`"></i>{{ titolo(it) }}</span>
-            <span class="sub"><PlateTag v-if="it.v.campi?.targa" :targa="it.v.campi.targa" /><span>{{ it.v.nome }}<template v-if="it.kind === 'fine'"> · disdetto il {{ fmtDate(parse(it.sc.disdetta.il)) }}</template></span><TagList :ids="it.v.etichette" /></span>
+            <span class="sub"><PlateTag v-if="it.v.campi?.targa" :targa="it.v.campi.targa" /><span>{{ it.v.nome }}<template v-if="it.kind === 'rata' && it.sc.automatico"> · automatico</template><template v-if="it.kind === 'fine'"> · disdetto il {{ fmtDate(parse(it.sc.disdetta.il)) }}</template></span><TagList :ids="it.v.etichette" /></span>
           </div>
           <div class="end">
             <span v-if="it.kind === 'rata'" class="amt">{{ it.amount ? eur(it.amount) : '–' }}</span>
@@ -104,6 +104,7 @@ const toggle = key => { open.value = open.value === key ? null : key }
         </button>
         <div v-if="open === g.k + it.key" class="actions">
           <template v-if="it.kind === 'rata'">
+            <p v-if="it.sc.automatico" class="disdire-info">Rinnovo automatico: dal giorno dopo la scadenza lo segno pagato da solo{{ it.amount ? ` (${eur(it.amount)})` : '' }} e passo al prossimo.</p>
             <p v-if="it.disdireEntro" class="disdire-info" :class="{ late: it.giorniDisdire < 0 }">
               <template v-if="it.giorniDisdire >= 0">Per non rinnovare, disdici entro il <b>{{ fmtDate(it.disdireEntro) }}</b> ({{ it.giorniDisdire === 0 ? 'oggi' : `tra ${it.giorniDisdire} gg` }}).</template>
               <template v-else>Termine per disdire superato il {{ fmtDate(it.disdireEntro) }}: questo rinnovo è dovuto.</template>

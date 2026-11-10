@@ -177,3 +177,24 @@ test('disdetta: a dicembre resta visibile come "fine", non costa e non si proiet
   assert.equal(occorrenze([dd], [], new Date(2026, 11, 11)).length, 0)
   assert.equal(riattiva(dd.scadenze[0]).disdetta, undefined)
 })
+
+import { rinnoviAutomatici } from '../src/lib/scadenze.js'
+
+test('rinnovo automatico: il giorno della scadenza resta, dal giorno dopo si rinnova da solo', () => {
+  const fibra = {
+    id: 'fb', tipo: 'internet', nome: 'Fibra casa', campi: {}, etichette: ['casa'],
+    scadenze: [{ id: 'f1', titolo: 'Canone', data: '2026-11-10', importo: 29.9, ricorrenza: { n: 1, unita: 'mesi' }, base: 'scadenza', automatico: true, avviso: 5 }]
+  }
+  assert.equal(rinnoviAutomatici([fibra], [], new Date(2026, 10, 10)).voci.length, 0)   // il 10/11 ancora in scadenza
+  const r = rinnoviAutomatici([fibra], [], new Date(2026, 10, 11))                       // l'11/11 rinnovato
+  assert.equal(r.voci[0].scadenze[0].data, '2026-12-10')
+  assert.equal(r.pagamenti.length, 1)
+  assert.deepEqual([r.pagamenti[0].id, r.pagamenti[0].data, r.pagamenti[0].importo, r.pagamenti[0].automatico], ['auto-fb-f1-2026-11-10', '2026-11-10', 29.9, true])
+  // app non aperta per tre mesi: recupera tutti i rinnovi
+  const r3 = rinnoviAutomatici([fibra], [], new Date(2027, 1, 15))
+  assert.deepEqual(r3.pagamenti.map(p => p.data), ['2026-11-10', '2026-12-10', '2027-01-10', '2027-02-10'])
+  assert.equal(r3.voci[0].scadenze[0].data, '2027-03-10')
+  // disdetto o non automatico: niente
+  assert.equal(rinnoviAutomatici([{ ...fibra, scadenze: [{ ...fibra.scadenze[0], disdetta: { il: '2026-11-01' } }] }], [], new Date(2026, 10, 20)).voci.length, 0)
+  assert.equal(rinnoviAutomatici([luce], [], new Date(2027, 5, 1)).voci.length, 0)
+})

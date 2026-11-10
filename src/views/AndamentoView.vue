@@ -127,7 +127,7 @@ const movimenti = computed(() => mesiStorico.value.flatMap(m => m.items).sort((a
     <div>
       <button v-for="p in movimenti.slice(0, quanti)" :key="p.id" class="mov" @click="openSheet('spesa', { pagamento: p })">
         <TipoIcon :tipo="p.tipo" small />
-        <span class="mid"><span style="font-weight:600">{{ p.titolo }}</span><span class="sub"><span>{{ fmtDate(parse(p.data)) }}</span><span v-if="p.nota">· {{ p.nota }}</span></span></span>
+        <span class="mid"><span style="font-weight:600">{{ p.titolo }}</span><span class="sub"><span>{{ fmtDate(parse(p.data)) }}</span><span v-if="p.automatico">· automatico</span><span v-if="p.nota">· {{ p.nota }}</span></span></span>
         <span class="amt">{{ eur(p.importo) }}</span>
       </button>
     </div>

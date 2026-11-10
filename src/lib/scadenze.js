@@ -178,6 +178,41 @@ export function registraPagamento(v, scId, { data, importo, nota = '' }) {
   return { pagamento, voce, next }
 }
 
+/**
+ * Rinnovi automatici (addebito diretto): ogni scadenza con `automatico` la cui data è passata
+ * (dal giorno dopo la scadenza) viene registrata come pagata con l'importo previsto e spostata
+ * alla data successiva, anche più volte se l'app non si apriva da un po'.
+ * Gli id dei pagamenti sono deterministici: se due dispositivi lo fanno insieme non si duplicano.
+ * Ritorna { voci, pagamenti, rinnovati } con solo ciò che va scritto.
+ */
+export function rinnoviAutomatici(voci, pagamenti = [], now = new Date()) {
+  const t = today(now)
+  const out = { voci: [], pagamenti: [], rinnovati: [] }
+  for (const v of voci) {
+    if (v.archiviata) continue
+    let voce = v
+    let cambiata = false
+    for (const sc0 of v.scadenze || []) {
+      if (!sc0.automatico || !sc0.ricorrenza || sc0.disdetta) continue
+      let sc = sc0
+      let guard = 0
+      while (parse(sc.data) && parse(sc.data) < t && guard++ < 120) {
+        const importo = stimaImporto(sc, [...pagamenti, ...out.pagamenti])
+        const r = registraPagamento(voce, sc.id, { data: sc.data, importo })
+        const pagamento = { ...r.pagamento, id: `auto-${v.id}-${sc.id}-${sc.data}`, automatico: true }
+        out.pagamenti.push(pagamento)
+        out.rinnovati.push({ voce: v.nome, titolo: sc.titolo, data: sc.data, importo })
+        voce = r.voce
+        sc = voce.scadenze.find(x => x.id === sc.id)
+        cambiata = true
+        if (!sc.data) break
+      }
+    }
+    if (cambiata) out.voci.push(voce)
+  }
+  return out
+}
+
 /** Etichette di un pagamento: quelle attuali della voce se esiste ancora, altrimenti quelle salvate. */
 export const etichettePagamento = (p, vociById) => vociById.get(p.voceId)?.etichette || p.etichette || []
 

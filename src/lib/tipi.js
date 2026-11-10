@@ -92,7 +92,7 @@ export const TIPI = [
       { k: 'disdetta', label: 'Preavviso disdetta (giorni)', type: 'number', half: true },
       { k: 'pagamento', label: 'Pagamento', type: 'select', options: PAGAMENTO, half: true }
     ],
-    template: () => [sc('Canone', { n: 1, unita: 'mesi' }, { avviso: 5 })],
+    template: () => [sc('Canone', { n: 1, unita: 'mesi' }, { avviso: 5, automatico: true })],
     sotto: v => [v.campi?.linea, v.campi?.operatore].filter(Boolean).join(' · ')
   },
   {
@@ -106,7 +106,7 @@ export const TIPI = [
       { k: 'pagamento', label: 'Pagamento', type: 'select', options: PAGAMENTO, half: true },
       { k: 'disdetta', label: 'Preavviso disdetta (giorni)', type: 'number', half: true, ph: '7' }
     ],
-    template: () => [sc('Rinnovo', { n: 1, unita: 'mesi' }, { avviso: 3 })],
+    template: () => [sc('Rinnovo', { n: 1, unita: 'mesi' }, { avviso: 3, automatico: true })],
     sotto: v => [v.campi?.categoria, v.campi?.piano].filter(Boolean).join(' · ')
   },
   {
